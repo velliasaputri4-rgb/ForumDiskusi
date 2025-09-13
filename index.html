@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Forum Komunitas Petani — JS</title>
+  <style>
+    :root{--bg:#f7f9fc;--card:#fff;--muted:#6b7280;--accent:#0ea5a4}
+    *{box-sizing:border-box}
+    body{font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:var(--bg); margin:0; color:#0f172a}
+    .container{max-width:1100px;margin:28px auto;padding:16px}
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+    h1{font-size:20px;margin:0}
+    .grid{display:grid;grid-template-columns:320px 1fr;gap:16px}
+    .card{background:var(--card);padding:14px;border-radius:12px;box-shadow:0 6px 14px rgba(12,18,31,0.06)}
+    label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+    input[type=text], textarea, select{width:100%;padding:8px;border-radius:8px;border:1px solid #e6eef5;background:#fff}
+    textarea{min-height:100px}
+    .btn{display:inline-block;padding:8px 12px;border-radius:8px;border:0;cursor:pointer}
+    .btn-primary{background:var(--accent);color:#fff}
+    .btn-muted{background:#fff;border:1px solid #e2e8f0;color:#111}
+    .small{font-size:13px;color:var(--muted)}
+    .threads-list{max-height:540px;overflow:auto}
+    .thread{border-radius:10px;padding:10px;border:1px solid #eef2f7;margin-bottom:10px;display:flex;justify-content:space-between;gap:10px}
+    .thread .meta{font-size:12px;color:var(--muted)}
+    .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+    .tag{font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid #e6eef5}
+    .actions{display:flex;flex-direction:column;gap:6px}
+    .detail{max-height:540px;overflow:auto}
+    .reply{border-top:1px solid #eef2f7;padding-top:10px;margin-top:10px}
+    .reply-item{padding:8px;border-radius:8px;border:1px solid #f1f5f9;margin-bottom:8px}
+    .toolbar{display:flex;gap:8px;align-items:center}
+    @media(max-width:880px){.grid{grid-template-columns:1fr;}.threads-list,.detail{max-height:none}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Forum Komunitas Petani</h1>
+      <div class="small">Berbagi pengalaman, tanya, dan solusi</div>
+    </header>
+
+    <div class="grid">
+      <aside class="card">
+        <h3>Buat Thread Baru</h3>
+        <form id="form-thread">
+          <label>Nama (ditampilkan)</label>
+          <input id="input-author" type="text" placeholder="Nama atau alias" />
+
+          <label>Judul</label>
+          <input id="input-title" type="text" placeholder="Judul thread" required />
+
+          <label>Isi</label>
+          <textarea id="input-content" placeholder="Tulis detail masalah atau pengalaman..." required></textarea>
+
+          <label>Tags (pisahkan koma)</label>
+          <input id="input-tags" type="text" placeholder="mis. padi,hama" />
+
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn btn-primary" type="submit">Posting</button>
+            <button class="btn btn-muted" type="button" id="btn-reset">Reset</button>
+          </div>
+        </form>
+
+        <div style="margin-top:12px" class="small">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>Export / Import</div>
+            <div style="display:flex;gap:6px;align-items:center">
+              <button id="btn-export" class="btn btn-muted">Export</button>
+              <label class="btn btn-muted" style="cursor:pointer;">
+                Import
+                <input id="input-import" type="file" accept="application/json" style="display:none" />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px">
+          <div class="small">Filter Tag</div>
+          <div id="tag-list" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"></div>
+        </div>
+      </aside>
+
+      <main>
+        <div class="card" style="margin-bottom:12px">
+          <div style="display:flex;gap:8px;align-items:center">
+            <input id="search" type="text" placeholder="Cari judul, isi, atau penulis..." />
+            <select id="sort">
+              <option value="newest">Terbaru</option>
+              <option value="popular">Paling populer</option>
+            </select>
+            <div class="small" id="count"></div>
+          </div>
+        </div>
+
+        <div class="card threads-list" id="threads"></div>
+
+        <div class="card detail" id="detail" style="margin-top:12px">
+          <div id="detail-empty" class="small">Pilih thread untuk melihat detail dan balasan.</div>
+          <div id="detail-content" style="display:none">
+            <h3 id="d-title"></h3>
+            <div class="small" id="d-meta"></div>
+            <p id="d-body" style="white-space:pre-wrap;margin-top:8px"></p>
+            <div class="tags" id="d-tags"></div>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
+              <div id="d-votes" class="small"></div>
+              <div style="display:flex;gap:8px">
+                <button id="btn-up" class="btn btn-muted">Up</button>
+                <button id="btn-down" class="btn btn-muted">Down</button>
+                <button id="btn-copy" class="btn btn-muted">Salin Link</button>
+                <button id="btn-delete" class="btn btn-muted" style="color:#ef4444">Hapus</button>
+              </div>
+            </div>
+
+            <hr style="margin:12px 0" />
+
+            <div id="replies"></div>
+
+            <div class="reply">
+              <form id="form-reply">
+                <label>Nama (opsional)</label>
+                <input id="reply-author" type="text" placeholder="Nama" />
+                <label>Balasan</label>
+                <textarea id="reply-content" placeholder="Tulis balasan..." required></textarea>
+                <div style="margin-top:8px">
+                  <button class="btn btn-primary" type="submit">Kirim</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+
+    <footer style="text-align:center;margin-top:18px" class="small">Forum Komunitas • Dibuat dengan ❤️</footer>
+  </div>
+
+  <script>
+    (function(){
+      const STORAGE = 'forum_komunitas_js_v1';
+      const qs = (s) => document.querySelector(s);
+      const qsa = (s) => Array.from(document.querySelectorAll(s));
+
+      // sample data
+      const sample = [
+        {id:'t1',title:'Cara mengendalikan wereng pada padi organik',content:'Saya memakai perangkap kuning + pengenalan musuh alami. Ada yang punya pengalaman terapan?',author:'Budi',tags:['padi','hama'],votes:5,createdAt:Date.now()-86400000*5,replies:[{id:'r1',author:'Sari',content:'Coba gunakan agen hayati Trichogramma dan perbaiki sanitasi lahan.',createdAt:Date.now()-86400000*4}]},
+        {id:'t2',title:'Skema rotasi tanaman untuk memperbaiki kesuburan tanah',content:'Ingin saran rotasi jagung - kedelai - kacang tanah di lahan 1 hektar. Berbagi pengalaman ya.',author:'Anton',tags:['tanah','rotasi','jagung'],votes:3,createdAt:Date.now()-86400000*15,replies:[]}
+      ];
+
+      let threads = load();
+      let selectedId = null;
+
+      // dom
+      const el = {
+        threads: qs('#threads'),
+        formThread: qs('#form-thread'), inputAuthor: qs('#input-author'), inputTitle: qs('#input-title'), inputContent: qs('#input-content'), inputTags: qs('#input-tags'), btnReset: qs('#btn-reset'),
+        search: qs('#search'), sort: qs('#sort'), count: qs('#count'), tagList: qs('#tag-list'), btnExport: qs('#btn-export'), inputImport: qs('#input-import'),
+        detail: qs('#detail'), detailEmpty: qs('#detail-empty'), detailContent: qs('#detail-content'), dtitle: qs('#d-title'), dmeta: qs('#d-meta'), dbody: qs('#d-body'), dtags: qs('#d-tags'), dvotes: qs('#d-votes'), btnUp: qs('#btn-up'), btnDown: qs('#btn-down'), btnCopy: qs('#btn-copy'), btnDelete: qs('#btn-delete'),
+        replies: qs('#replies'), formReply: qs('#form-reply'), replyAuthor: qs('#reply-author'), replyContent: qs('#reply-content')
+      };
+
+      // init
+      render();
+      bind();
+
+      function uid(prefix='id'){
+        return prefix+'_'+Math.random().toString(36).slice(2,9);
+      }
+
+      function load(){
+        try{
+          const raw = localStorage.getItem(STORAGE);
+          if(raw) return JSON.parse(raw);
+        }catch(e){console.error(e)}
+        localStorage.setItem(STORAGE, JSON.stringify(sample));
+        return sample.slice();
+      }
+
+      function save(){ localStorage.setItem(STORAGE, JSON.stringify(threads)); }
+
+      function bind(){
+        el.formThread.addEventListener('submit', onCreate);
+        el.btnReset.addEventListener('click', ()=>{el.inputAuthor.value='';el.inputTitle.value='';el.inputContent.value='';el.inputTags.value='';});
+        el.search.addEventListener('input', render);
+        el.sort.addEventListener('change', render);
+        el.btnExport.addEventListener('click', exportJSON);
+        el.inputImport.addEventListener('change', importJSON);
+        el.formReply.addEventListener('submit', onReply);
+        el.btnUp.addEventListener('click', ()=>vote(1));
+        el.btnDown.addEventListener('click', ()=>vote(-1));
+        el.btnCopy.addEventListener('click', copyLink);
+        el.btnDelete.addEventListener('click', deleteThread);
+        window.addEventListener('hashchange', ()=>{const h=location.hash.replace('#',''); if(h) openThreadById(h)});
+      }
+
+      function onCreate(e){
+        e.preventDefault();
+        const title = el.inputTitle.value.trim();
+        const content = el.inputContent.value.trim();
+        if(!title||!content) return alert('Judul & isi dibutuhkan');
+        const thread = {id:uid('t'),title,content,author:el.inputAuthor.value.trim()||'Anon',tags:el.inputTags.value.split(',').map(s=>s.trim()).filter(Boolean),votes:0,createdAt:Date.now(),replies:[]};
+        threads.unshift(thread); save(); clearForm(); render(); openThread(thread.id);
+      }
+
+      function clearForm(){ el.inputTitle.value=''; el.inputContent.value=''; el.inputTags.value=''; }
+
+      function render(){
+        const q = el.search.value.trim().toLowerCase();
+        const sort = el.sort.value;
+        let list = threads.filter(t=> (t.title+' '+t.content+' '+t.author).toLowerCase().includes(q));
+        if(sort==='newest') list.sort((a,b)=>b.createdAt-a.createdAt);
+        else list.sort((a,b)=>b.votes-a.votes||b.createdAt-a.createdAt);
+
+        el.threads.innerHTML='';
+        if(list.length===0) el.threads.innerHTML='<div class="small">Tidak ada thread.</div>';
+        list.forEach(t=>{
+          const div = document.createElement('div'); div.className='thread';
+          div.innerHTML = `<div style="flex:1"><strong style="cursor:pointer" data-id="${t.id}">${escapeHtml(t.title)}</strong><div class="meta">oleh <b>${escapeHtml(t.author)}</b> • ${t.replies.length} balasan • ${fmtDate(t.createdAt)}</div><div style="margin-top:8px;color:#0f172a">${escapeHtml(t.content).slice(0,200)}${t.content.length>200?'...':''}</div><div class="tags">${(t.tags||[]).map(tag=>`<span class="tag">${escapeHtml(tag)}</span>`).join('')}</div></div><div class="actions"><div style="text-align:right;font-weight:600">${t.votes} ♡</div><div style="display:flex;flex-direction:column;gap:6px"><button class="btn btn-muted" data-open="${t.id}">Buka</button><button class="btn btn-muted" data-copy="${t.id}">Salin Link</button><button class="btn" data-delete="${t.id}" style="color:#ef4444">Hapus</button></div></div>`;
+          el.threads.appendChild(div);
+        });
+
+        // attach event listeners for the generated buttons
+        qsa('[data-open]').forEach(btn=>btn.addEventListener('click', e=>openThreadById(e.target.dataset.open)));
+        qsa('[data-copy]').forEach(btn=>btn.addEventListener('click', e=>{const id=e.target.dataset.copy;navigator.clipboard?.writeText(location.href+'#'+id);alert('Link disalin');}));
+        qsa('[data-delete]').forEach(btn=>btn.addEventListener('click', e=>{if(confirm('Hapus thread?')){const id=e.target.dataset.delete; threads=threads.filter(x=>x.id!==id); if(selectedId===id) closeDetail(); save(); render();}}));
+        qsa('strong[data-id]').forEach(elm=>elm.addEventListener('click', e=>openThreadById(e.target.dataset.id)));
+
+        el.count.textContent = list.length + ' thread';
+
+        renderTagList();
+      }
+
+      function renderTagList(){
+        const tags = Array.from(new Set(threads.flatMap(t=>t.tags||[])));
+        el.tagList.innerHTML = '<button class="btn btn-muted" data-tag="">Semua</button>' + tags.map(tag=>`<button class="btn btn-muted" data-tag="${tag}">${tag}</button>`).join('');
+        qsa('[data-tag]').forEach(b=>b.addEventListener('click', e=>{const tag=e.target.dataset.tag; if(tag===''){el.search.value=''; render();} else {el.search.value=tag; render();}}));
+      }
+
+      function openThread(id){ selectedId=id; location.hash=id; openThreadById(id); }
+      function openThreadById(id){ const t=threads.find(x=>x.id===id); if(!t) return alert('Thread tidak ditemukan'); selectedId=t.id; showDetail(t); }
+
+      function showDetail(t){ el.detailEmpty.style.display='none'; el.detailContent.style.display='block'; el.dtitle.textContent=t.title; el.dmeta.textContent = `oleh ${t.author} • ${fmtDate(t.createdAt)}`; el.dbody.textContent = t.content; el.dtags.innerHTML = (t.tags||[]).map(tag=>`<span class="tag">${escapeHtml(tag)}</span>`).join(''); el.dvotes.textContent = t.votes + ' ♡'; renderReplies(t); }
+
+      function closeDetail(){ selectedId=null; location.hash=''; el.detailEmpty.style.display='block'; el.detailContent.style.display='none'; }
+
+      function renderReplies(t){ el.replies.innerHTML = ''; if((t.replies||[]).length===0) el.replies.innerHTML='<div class="small">Belum ada balasan.</div>';
+        (t.replies||[]).forEach(r=>{ const d=document.createElement('div'); d.className='reply-item'; d.innerHTML=`<div style="display:flex;justify-content:space-between"><div style="font-weight:600">${escapeHtml(r.author||'Anon')}</div><div class="small">${fmtDate(r.createdAt)}</div></div><div style="margin-top:6px;white-space:pre-wrap">${escapeHtml(r.content)}</div>`; el.replies.appendChild(d); }); }
+
+      function onReply(e){ e.preventDefault(); if(!selectedId) return alert('Pilih thread dulu'); const content=el.replyContent.value.trim(); if(!content) return; const author=el.replyAuthor.value.trim()||'Anon'; const t=threads.find(x=>x.id===selectedId); t.replies.push({id:uid('r'),author,content,createdAt:Date.now()}); save(); render(); showDetail(t); el.replyContent.value=''; el.replyAuthor.value=''; }
+
+      function vote(delta){ if(!selectedId) return alert('Pilih thread dulu'); const t=threads.find(x=>x.id===selectedId); t.votes+=delta; save(); render(); showDetail(t); }
+
+      function copyLink(){ if(!selectedId) return; navigator.clipboard?.writeText(location.href+'#'+selectedId); alert('Link disalin ke clipboard'); }
+
+      function deleteThread(){ if(!selectedId) return; if(!confirm('Hapus thread ini?')) return; threads=threads.filter(x=>x.id!==selectedId); save(); render(); closeDetail(); }
+
+      function exportJSON(){ const blob=new Blob([JSON.stringify(threads, null, 2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='forum_export.json'; a.click(); URL.revokeObjectURL(url); }
+
+      function importJSON(e){ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=function(ev){ try{ const data=JSON.parse(ev.target.result); if(!Array.isArray(data)) return alert('Format tidak valid (harus array)'); threads=data; save(); render(); alert('Import sukses'); }catch(err){alert('Gagal membaca file: '+err.message)} }; r.readAsText(f); }
+
+      // utils
+      function fmtDate(ts){ const d=new Date(ts); return d.toLocaleString(); }
+      function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+      // open if hash present
+      if(location.hash){ const h=location.hash.replace('#',''); if(h) setTimeout(()=>openThreadById(h),300); }
+
+    })();
+  </script>
+</body>
+</html>
